@@ -30,7 +30,7 @@
 		file_put_contents(CREDENTIALS_PATH, $accessToken);
 	}
 
-	if ($accessToken != "") {
+	if ($accessToken != "" and $accessToken != "\n") {
 
 		$client->setAccessToken($accessToken);
 
