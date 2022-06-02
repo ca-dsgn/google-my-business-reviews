@@ -2,32 +2,39 @@
 
 	$url = "../../";
 
-	require_once $url.'php/Google/autoload.php';
-	require_once $url.'php/Google/Client.php';
-	require_once $url.'files/services/mybusiness.php';
+	//Dev
+	$redirect_url = "http://localhost/you-dsgn/files/services/reviews.php";
+
+	//Production
+	//$redirect_url = "https://www.ca-dsgn.de/files/services/reviews.php";
+
+	$company_name = "CA Design";
+
+	require_once $url.'php/helper.php';
+	require_once($url."files/services/mybusiness.php");
 	
 	define('CLIENT_SECRET_PATH', 'private/client_secret.json');
 	define('CREDENTIALS_PATH', 'private/credentials.json');
   
-	$client = new Google_Client();
+	$client = new Google\Client();
 	
 	//$client->setDeveloperKey($DEVELOPER_KEY);
-	$client->setAuthConfigFile(CLIENT_SECRET_PATH);
+	$client->setAuthConfig(CLIENT_SECRET_PATH);
 	$client->setAccessType('offline');
 	$client->setApprovalPrompt('force');
 	$client->addScope("https://www.googleapis.com/auth/plus.business.manage");
 
-	$client->setRedirectUri("http://localhost/you-dsgn/files/services/reviews.php");
+	$client->setRedirectUri($redirect_url);
 
-	$accessToken = file_get_contents(CREDENTIALS_PATH);
+	$accessToken = json_decode(file_get_contents(CREDENTIALS_PATH),true);
 
 	if (isset($_GET["code"])) {
 
 		//Step 2: Authenticate and save to credentials
 
-		$accessToken = $client->authenticate($_GET['code']);
+		$accessToken = $client->fetchAccessTokenWithAuthCode($_GET['code']);
 
-		file_put_contents(CREDENTIALS_PATH, $accessToken);
+		file_put_contents(CREDENTIALS_PATH, json_encode($accessToken));
 	}
 
 	if ($accessToken != "" and $accessToken != "\n") {
@@ -40,7 +47,7 @@
 
 			$client->refreshToken($client->getRefreshToken());
 
-			file_put_contents(CREDENTIALS_PATH, $client->getAccessToken());
+			file_put_contents(CREDENTIALS_PATH, json_encode($client->getAccessToken()));
 		}
 
 	} else {
@@ -52,26 +59,38 @@
 		header("Location: ".$authUrl);
 	}
 
+	$my_business_account = new Google_Service_MyBusinessAccountManagement($client);
+
+	$list_accounts = $my_business_account->accounts->listAccounts();
+	
+	$account = $list_accounts["accounts"][0];
+
+	$my_business_information = new Google_Service_MyBusinessBusinessInformation($client);
+
+	$locations = $my_business_information->accounts_locations;
+
+	$optParams = [
+		'pageSize' => 20,
+		'readMask' => array(
+	       'name',
+	       'title',
+	       'profile'
+	   )
+	];
+
+	$locationsList = $locations->listAccountsLocations($account->name, $optParams)->getLocations();
+
 	$service = new Google_Service_MyBusiness($client);
-
-	$accounts = $service->accounts;
-
-	$accountsList = $accounts->listAccounts()->getAccounts();
-
-	$account = $accountsList[0];
-
-	$locations = $service->accounts_locations;
-
-	$locationsList = $locations->listAccountsLocations($account->name)->getLocations();
 
 	if (empty($locationsList) === false) {
 
         foreach ($locationsList as $location) {
 
-        	if ($location->getLocationName() == "CA Design") {
+        	if ($location->title == $company_name) {
 
 				$reviewsList = $service->accounts_locations_reviews;
-			    $reviews = $reviewsList->listAccountsLocationsReviews($location->name)->getReviews();
+
+			    $reviews = $reviewsList->listAccountsLocationsReviews($account->name."/".$location->name)->getReviews();
 
 			    $response = array("reviews" => array());
 
@@ -113,7 +132,7 @@
 			    	$total_review_value+= $rating;
 			    	$total_reviews++;
 
-			    	if (isset($review["comment"])) {
+			    	if (isset($review["comment"]) and $rating > 3) {
 
 			    		$comment = $review["comment"];
 
