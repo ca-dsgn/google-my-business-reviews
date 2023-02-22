@@ -88,79 +88,140 @@
 
         	if ($location->title == $company_name) {
 
+        		$action = isset($_GET["action"]) ? $_GET["action"] : "get_reviews";
+
 				$reviewsList = $service->accounts_locations_reviews;
 
 			    $reviews = $reviewsList->listAccountsLocationsReviews($account->name."/".$location->name)->getReviews();
 
-			    $response = array("reviews" => array());
+        		switch ($action) {
 
-			    $total_review_value = 0;
-			    $total_reviews = 0;
+        			case "get_overview":
 
-			    foreach($reviews as $key => $review) {
+					    $total_review_value = 0;
+					    $total_reviews = 0;
 
-			    	$reviewer = $review->getReviewer();
+					    $best_rating = 0;
+					    $worst_rating = 5;
 
-			    	switch ($review["starRating"]) {
+					    foreach($reviews as $key => $review) {
 
-			    		case "FIVE":
+					    	switch ($review["starRating"]) {
 
-			    			$rating = 5;
-			    			break;
+					    		case "FIVE":
 
-			    		case "FOUR":
+					    			$rating = 5;
+					    			break;
 
-			    			$rating = 4;
-			    			break;
+					    		case "FOUR":
 
-			    		case "THREE":
+					    			$rating = 4;
+					    			break;
 
-			    			$rating = 3;
-			    			break;
+					    		case "THREE":
 
-			    		case "TWO":
+					    			$rating = 3;
+					    			break;
 
-			    			$rating = 2;
-			    			break;
+					    		case "TWO":
 
-			    		case "ONE":
+					    			$rating = 2;
+					    			break;
 
-			    			$rating = 1;
-			    			break;
-			    	}
+					    		case "ONE":
 
-			    	$total_review_value+= $rating;
-			    	$total_reviews++;
+					    			$rating = 1;
+					    			break;
+					    	}
 
-			    	if (isset($review["comment"]) and $rating > 3) {
+					    	$total_review_value+= $rating;
+					    	$total_reviews++;
 
-			    		$comment = $review["comment"];
+					    	if ($rating > $best_rating) {
 
-			    		if (strpos($comment,"\n\n(Translated by Google)") !== false) {
-			    		
-			    			$comment = substr($comment,0,strpos($comment,"\n\n(Translated by Google)"));
-			    		}
-			    		$comment = preg_replace('/\s+(?=[\.,])/', '', $comment);
+					    		$best_rating = $rating;
+					    	}
+					    	if ($rating < $worst_rating) {
 
-				    	$r = array(
+					    		$worst_rating = $rating;
+					    	}
+					    }
 
-				    		"reviewer" => array(
+					    $response = [
+					    	"statistics" => [
+						    	"total" => $total_reviews,
+						    	"average" => round($total_review_value/$total_reviews,1),
+						    	"best" => $best_rating,
+						    	"worst" => $worst_rating
+						    ]
+					    ];
 
-				    			"name" => $reviewer["displayName"],
-				    			"img" => $reviewer["profilePhotoUrl"]
-				    		),
-				    		"comment" => $comment,
-				    		"created" => $review["createTime"],
-				    		"rating" => $rating,
-				    		"stars" => $review["starRating"]
-				    	);
+        				break;
 
-			    		array_push($response["reviews"],$r);
-			    	}
-			    }
+        			case "get_reviews":
 
-			    $response["statistics"] = array("total" => $total_reviews,
-			    								"average" => round($total_review_value/$total_reviews,1));
+					    $response = array("reviews" => array());
+
+					    foreach($reviews as $key => $review) {
+
+					    	$reviewer = $review->getReviewer();
+
+					    	switch ($review["starRating"]) {
+
+					    		case "FIVE":
+
+					    			$rating = 5;
+					    			break;
+
+					    		case "FOUR":
+
+					    			$rating = 4;
+					    			break;
+
+					    		case "THREE":
+
+					    			$rating = 3;
+					    			break;
+
+					    		case "TWO":
+
+					    			$rating = 2;
+					    			break;
+
+					    		case "ONE":
+
+					    			$rating = 1;
+					    			break;
+					    	}
+
+					    	if (isset($review["comment"]) and $rating > 3) {
+
+					    		$comment = $review["comment"];
+
+					    		if (strpos($comment,"\n\n(Translated by Google)") !== false) {
+					    		
+					    			$comment = substr($comment,0,strpos($comment,"\n\n(Translated by Google)"));
+					    		}
+					    		$comment = preg_replace('/\s+(?=[\.,])/', '', $comment);
+
+						    	$r = array(
+
+						    		"reviewer" => array(
+
+						    			"name" => $reviewer["displayName"],
+						    			"img" => $reviewer["profilePhotoUrl"]
+						    		),
+						    		"comment" => $comment,
+						    		"created" => $review["createTime"],
+						    		"rating" => $rating,
+						    		"stars" => $review["starRating"]
+						    	);
+
+					    		array_push($response["reviews"],$r);
+					    	}
+					    }
+        				break;
+        		}
 
 			    print json_encode($response, JSON_PRETTY_PRINT);
 			}
