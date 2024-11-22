@@ -3,12 +3,12 @@
 	$url = "../../";
 
 	//Dev
-	$redirect_url = "http://localhost/you-dsgn/files/services/reviews.php";
+	//$redirect_url = "http://localhost/you-dsgn/files/services/reviews.php";
 
 	//Production
-	//$redirect_url = "https://www.ca-dsgn.de/files/services/reviews.php";
+	$redirect_url = "https://www.ca-design.com/de/files/services/reviews.php";
 
-	$company_name = "CA Design";
+	$company_name = "CA Design | Frankfurt am Main";
 
 	require_once $url.'php/helper.php';
 	require_once($url."files/services/mybusiness.php");
@@ -70,7 +70,7 @@
 	$locations = $my_business_information->accounts_locations;
 
 	$optParams = [
-		'pageSize' => 20,
+		'pageSize' => 100,
 		'readMask' => array(
 	       'name',
 	       'title',
@@ -198,10 +198,21 @@
 
 					    		$comment = $review["comment"];
 
-					    		if (strpos($comment,"\n\n(Translated by Google)") !== false) {
-					    		
-					    			$comment = substr($comment,0,strpos($comment,"\n\n(Translated by Google)"));
-					    		}
+								if (strpos($comment,"(Translated by Google)") !== false) {
+
+									$pos = strpos($comment,"(Translated by Google)");
+
+									if ($pos == 0) {
+
+										$comment = substr($comment,strpos($comment,"(Original)")+11);
+									}
+									else {
+
+										$comment = substr($comment,0,strpos($comment,"(Translated by Google)"));
+									}
+								}
+
+							
 					    		$comment = preg_replace('/\s+(?=[\.,])/', '', $comment);
 
 						    	$r = array(
